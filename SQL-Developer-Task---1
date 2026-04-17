@@ -1,8 +1,0 @@
--- Retrieve Sales employees hired in the 1990s whose last name starts with 'S'
-SELECT first_name, last_name, hire_date, salary
-FROM employees
-WHERE department = 'Sales'
-  AND hire_date BETWEEN '1990-01-01' AND '1999-12-31'
-  AND last_name LIKE 'S%'
-ORDER BY hire_date DESC, salary ASC
-LIMIT 10;
