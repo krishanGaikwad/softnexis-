@@ -1,0 +1,108 @@
+import sqlite3
+
+# Step 1: Create in-memory SQLite database
+conn = sqlite3.connect(":memory:")
+cursor = conn.cursor()
+
+# Step 2: Create employees table
+cursor.execute("""
+CREATE TABLE employees (
+    emp_no INTEGER PRIMARY KEY,
+    first_name TEXT,
+    last_name TEXT,
+    gender TEXT,
+    hire_date TEXT
+)
+""")
+
+# Step 3: Insert sample data
+cursor.executemany("""
+INSERT INTO employees (emp_no, first_name, last_name, gender, hire_date)
+VALUES (?, ?, ?, ?, ?)
+""", [
+    (10001, "Georgi", "Facello", "M", "1986-06-26"),
+    (10002, "Bezalel", "Simmel", "F", "1985-11-21"),
+    (10003, "Parto", "Bamford", "M", "1986-08-28")
+])
+
+# Step 4: INSERT new employees
+cursor.execute("INSERT INTO employees VALUES (500001, 'Emma', 'Johnson', 'F', '2023-06-01')")
+cursor.execute("INSERT INTO employees VALUES (500002, 'Liam', 'Smith', 'M', '2023-06-01')")
+
+# Step 5: UPDATE record
+cursor.execute("UPDATE employees SET first_name = 'Amelia' WHERE emp_no = 500001")
+
+# Step 6: DELETE test records
+cursor.execute("DELETE FROM employees WHERE emp_no >= 500000")
+
+# Step 7: Transaction demo
+try:
+    conn.execute("BEGIN")
+    cursor.execute("UPDATE employees SET first_name = 'Alexander' WHERE emp_no = 10002")
+    cursor.execute("INSERT INTO employees VALUES (10004, 'Test', 'User', 'M', '2023-01-01')")
+    raise Exception("Simulated error, rolling back")
+    conn.commit()
+except Exception:
+    conn.rollback()
+
+# Step 8: Verify final state
+cursor.execute("SELECT * FROM employees")
+rows = cursor.fetchall()
+for row in rows:
+    print(row)
+
+conn.close()
+import sqlite3
+
+# Step 1: Create in-memory SQLite database
+conn = sqlite3.connect(":memory:")
+cursor = conn.cursor()
+
+# Step 2: Create employees table
+cursor.execute("""
+CREATE TABLE employees (
+    emp_no INTEGER PRIMARY KEY,
+    first_name TEXT,
+    last_name TEXT,
+    gender TEXT,
+    hire_date TEXT
+)
+""")
+
+# Step 3: Insert sample data
+cursor.executemany("""
+INSERT INTO employees (emp_no, first_name, last_name, gender, hire_date)
+VALUES (?, ?, ?, ?, ?)
+""", [
+    (10001, "Georgi", "Facello", "M", "1986-06-26"),
+    (10002, "Bezalel", "Simmel", "F", "1985-11-21"),
+    (10003, "Parto", "Bamford", "M", "1986-08-28")
+])
+
+# Step 4: INSERT new employees
+cursor.execute("INSERT INTO employees VALUES (500001, 'Emma', 'Johnson', 'F', '2023-06-01')")
+cursor.execute("INSERT INTO employees VALUES (500002, 'Liam', 'Smith', 'M', '2023-06-01')")
+
+# Step 5: UPDATE record
+cursor.execute("UPDATE employees SET first_name = 'Amelia' WHERE emp_no = 500001")
+
+# Step 6: DELETE test records
+cursor.execute("DELETE FROM employees WHERE emp_no >= 500000")
+
+# Step 7: Transaction demo
+try:
+    conn.execute("BEGIN")
+    cursor.execute("UPDATE employees SET first_name = 'Alexander' WHERE emp_no = 10002")
+    cursor.execute("INSERT INTO employees VALUES (10004, 'Test', 'User', 'M', '2023-01-01')")
+    raise Exception("Simulated error, rolling back")
+    conn.commit()
+except Exception:
+    conn.rollback()
+
+# Step 8: Verify final state
+cursor.execute("SELECT * FROM employees")
+rows = cursor.fetchall()
+for row in rows:
+    print(row)
+
+conn.close()
