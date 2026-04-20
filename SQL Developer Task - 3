@@ -1,0 +1,65 @@
+-- Create tables
+CREATE TABLE departments (
+    dept_no CHAR(4) PRIMARY KEY,
+    dept_name VARCHAR(40) NOT NULL
+);
+
+CREATE TABLE employees (
+    emp_no INT PRIMARY KEY,
+    first_name VARCHAR(20),
+    last_name VARCHAR(20),
+    gender CHAR(1)
+);
+
+CREATE TABLE dept_emp (
+    emp_no INT,
+    dept_no CHAR(4),
+    from_date DATE,
+    to_date DATE,
+    PRIMARY KEY (emp_no, dept_no),
+    FOREIGN KEY (emp_no) REFERENCES employees(emp_no),
+    FOREIGN KEY (dept_no) REFERENCES departments(dept_no)
+);
+
+CREATE TABLE salaries (
+    emp_no INT,
+    salary INT,
+    from_date DATE,
+    to_date DATE,
+    PRIMARY KEY (emp_no, from_date),
+    FOREIGN KEY (emp_no) REFERENCES employees(emp_no)
+);
+
+-- Insert sample data
+INSERT INTO departments VALUES 
+('d001','Sales'), 
+('d002','Development');
+
+INSERT INTO employees VALUES
+(10001,'Georgi','Facello','M'),
+(10002,'Bezalel','Simmel','F'),
+(10003,'Parto','Bamford','M');
+
+INSERT INTO dept_emp VALUES
+(10001,'d002','1990-01-01','9999-01-01'),
+(10002,'d001','1991-01-01','9999-01-01'),
+(10003,'d001','1992-01-01','9999-01-01');
+
+INSERT INTO salaries VALUES
+(10001,88000,'1990-01-01','9999-01-01'),
+(10002,72000,'1991-01-01','9999-01-01'),
+(10003,65000,'1992-01-01','9999-01-01');
+
+-- Final query: Department-wise gender ratios and average salary
+SELECT  
+    d.dept_name,
+    ROUND(AVG(s.salary), 2) AS avg_salary,
+    ROUND(100.0 * SUM(CASE WHEN e.gender = 'F' THEN 1 ELSE 0 END) / COUNT(*), 1) AS female_pct,
+    ROUND(100.0 * SUM(CASE WHEN e.gender = 'M' THEN 1 ELSE 0 END) / COUNT(*), 1) AS male_pct
+FROM departments d
+JOIN dept_emp de ON d.dept_no = de.dept_no
+JOIN employees e ON de.emp_no = e.emp_no
+JOIN salaries s ON e.emp_no = s.emp_no
+WHERE de.to_date > CURDATE()
+  AND s.to_date > CURDATE()
+GROUP BY d.dept_name;
