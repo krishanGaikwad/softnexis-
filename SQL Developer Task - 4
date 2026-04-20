@@ -1,0 +1,38 @@
+-- Step 1: Create base employees table
+CREATE TABLE employees (
+    emp_no INT PRIMARY KEY,
+    birth_date DATE,
+    first_name VARCHAR(20),
+    last_name VARCHAR(20),
+    gender CHAR(1),
+    hire_date DATE
+);
+
+-- Step 2: Insert sample data
+INSERT INTO employees VALUES
+(10001, '1953-09-02', 'Georgi', 'Facello', 'M', '1986-06-26'),
+(10002, '1964-06-02', 'Bezalel', 'Simmel', 'F', '1985-11-21'),
+(10003, '1959-12-03', 'Parto', 'Bamford', 'M', '1986-08-28');
+
+-- Step 3: Create sandbox table from employees
+CREATE TABLE employee_sandbox AS  
+SELECT * FROM employees;
+
+-- Step 4: INSERT new employees
+INSERT INTO employee_sandbox  
+(emp_no, birth_date, first_name, last_name, gender, hire_date) 
+VALUES  
+(500001, '1995-08-14', 'Emma', 'Johnson', 'F', '2023-06-01'),
+(500002, '1990-11-03', 'Liam', 'Smith', 'M', '2023-06-01');
+
+-- Step 5: UPDATE existing record
+UPDATE employee_sandbox
+SET first_name = 'Amelia'
+WHERE emp_no = 500001;
+
+-- Step 6: DELETE test records
+DELETE FROM employee_sandbox
+WHERE emp_no >= 500000;
+
+-- Step 7: Verify changes
+SELECT * FROM employee_sandbox;
