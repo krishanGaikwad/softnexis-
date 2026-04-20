@@ -1,0 +1,63 @@
+import argparse, json, os, getpass, base64, hashlib
+
+VAULT_FILE = "vault.json"
+
+def derive_key(password: str, salt: bytes) -> str:
+    return hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 100000).hex()
+
+def encrypt_entry(entry: dict) -> dict:
+    plaintext = json.dumps(entry).encode()
+    return {"ciphertext": base64.b64encode(plaintext).decode()}
+
+def decrypt_entry(enc_entry: dict) -> dict:
+    plaintext = base64.b64decode(enc_entry["ciphertext"])
+    return json.loads(plaintext.decode())
+
+def load_vault(master_password: str):
+    if os.path.exists(VAULT_FILE):
+        with open(VAULT_FILE, "r") as f:
+            vault = json.load(f)
+    else:
+        salt = os.urandom(16)
+        vault = {"salt": base64.b64encode(salt).decode(), "entries": {}}
+    return vault
+
+def save_vault(vault: dict):
+    with open(VAULT_FILE, "w") as f:
+        json.dump(vault, f)
+
+def add_entry(master_password: str):
+    vault = load_vault(master_password)
+    website = input("Website: ")
+    username = input("Username: ")
+    password = getpass.getpass("Password: ")
+    entry = {"username": username, "password": password}
+    vault["entries"][website] = encrypt_entry(entry)
+    save_vault(vault)
+    print(f"Entry for {website} added.")
+
+def get_entry(master_password: str, website: str):
+    vault = load_vault(master_password)
+    if website not in vault["entries"]:
+        print("No entry found.")
+        return
+    entry = decrypt_entry(vault["entries"][website])
+    print(f"Username: {entry['username']}\nPassword: {entry['password']}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Simple CLI Password Manager")
+    subparsers = parser.add_subparsers(dest="command")
+
+    add_parser = subparsers.add_parser("add")
+    add_parser.set_defaults(func=add_entry)
+
+    get_parser = subparsers.add_parser("get")
+    get_parser.add_argument("website")
+    get_parser.set_defaults(func=lambda mp, args=get_parser: get_entry(mp, args.website))
+
+    args = parser.parse_args()
+    master_password = getpass.getpass("Master Password: ")
+    if args.command == "add":
+        args.func(master_password)
+    elif args.command == "get":
+        get_entry(master_password, args.website)
