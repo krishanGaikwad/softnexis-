@@ -1,0 +1,117 @@
+import aiohttp
+import asyncio
+from typing import AsyncGenerator, Optional, Dict, Any
+from dataclasses import dataclass
+import time
+
+# -------------------------
+# Custom Exceptions
+# -------------------------
+class NotFoundError(Exception): pass
+class RateLimitError(Exception): pass
+class APIError(Exception): pass
+
+# -------------------------
+# Rate Limit Tracking
+# -------------------------
+@dataclass
+class RateLimit:
+    remaining: int
+    reset: float
+
+# -------------------------
+# GitHub API Client
+# -------------------------
+class GitHubAPI:
+    BASE_URL = "https://api.github.com"
+
+    def __init__(self, token: str):
+        self.token = token
+        self.rate_limit = RateLimit(5000, 0)
+        self.session: Optional[aiohttp.ClientSession] = None
+
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession(
+            headers={"Authorization": f"Bearer {self.token}"}
+        )
+        return self
+
+    async def __aexit__(self, *excinfo):
+        if self.session:
+            await self.session.close()
+
+    async def _request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
+        url = f"{self.BASE_URL}/{endpoint}"
+        async with self.session.request(method, url, **kwargs) as response:
+            # Update rate limit info
+            self.rate_limit = RateLimit(
+                remaining=int(response.headers.get("X-RateLimit-Remaining", 5000)),
+                reset=float(response.headers.get("X-RateLimit-Reset", time.time()))
+            )
+
+            if response.status == 429:
+                retry_after = float(response.headers.get("Retry-After", 60))
+                raise RateLimitError(f"Retry after {retry_after} seconds")
+
+            if response.status == 404:
+                raise NotFoundError(f"Resource not found: {endpoint}")
+
+            if response.status >= 500:
+                raise APIError(f"Server error {response.status}")
+
+            response.raise_for_status()
+            return await response.json()
+
+    # -------------------------
+    # Resource Endpoints
+    # -------------------------
+    async def get_user(self, username: str) -> Dict[str, Any]:
+        """Fetch GitHub user profile"""
+        return await self._request("GET", f"users/{username}")
+
+    async def get_repos(self, username: str) -> AsyncGenerator[Dict[str, Any], None]:
+        """Paginate through user repositories"""
+        page = 1
+        while True:
+            data = await self._request(
+                "GET",
+                f"users/{username}/repos",
+                params={"page": page, "per_page": 100}
+            )
+            if not data:
+                break
+            for repo in data:
+                yield repo
+            page += 1
+
+    async def get_issues(self, owner: str, repo: str) -> AsyncGenerator[Dict[str, Any], None]:
+        """Paginate through repository issues"""
+        page = 1
+        while True:
+            data = await self._request(
+                "GET",
+                f"repos/{owner}/{repo}/issues",
+                params={"page": page, "per_page": 50}
+            )
+            if not data:
+                break
+            for issue in data:
+                yield issue
+            page += 1
+
+# -------------------------
+# Usage Example
+# -------------------------
+async def main():
+    async with GitHubAPI("your_token_here") as api:
+        user = await api.get_user("torvalds")
+        print(user)
+
+        async for repo in api.get_repos("torvalds"):
+            print(repo["name"])
+
+        async for issue in api.get_issues("torvalds", "linux"):
+            print(issue["title"])
+
+if __name__ == "__main__":
+    asyncio.run(main())
