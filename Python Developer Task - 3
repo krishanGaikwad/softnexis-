@@ -1,0 +1,115 @@
+import requests
+import random
+import time
+from bs4 import BeautifulSoup
+from backoff import expo, on_exception
+
+# -------------------------
+# Proxy Manager
+# -------------------------
+class ProxyManager:
+    def __init__(self, proxies):
+        self.proxies = proxies
+        self.bad_proxies = set()
+
+    def get_proxy(self):
+        healthy = [p for p in self.proxies if p not in self.bad_proxies]
+        if not healthy:
+            raise RuntimeError("No healthy proxies available")
+        return random.choice(healthy)
+
+    def blacklist(self, proxy):
+        self.bad_proxies.add(proxy)
+
+# -------------------------
+# CAPTCHA Solver (stub)
+# -------------------------
+class CaptchaSolver:
+    def solve(self, content):
+        # Integrate with 2Captcha/Anti-Captcha API here
+        # Return solved token
+        return "dummy_solution"
+
+# -------------------------
+# Scraper Engine
+# -------------------------
+class Scraper:
+    def __init__(self, proxy_manager, captcha_solver, user_agents):
+        self.proxy_manager = proxy_manager
+        self.captcha_solver = captcha_solver
+        self.user_agents = user_agents
+
+    @on_exception(expo, requests.exceptions.RequestException, max_tries=5)
+    def scrape_with_retry(self, url):
+        proxy = self.proxy_manager.get_proxy()
+        headers = {"User-Agent": random.choice(self.user_agents)}
+
+        try:
+            response = requests.get(
+                url,
+                proxies={"http": proxy, "https": proxy},
+                headers=headers,
+                timeout=10
+            )
+
+            # CAPTCHA detection
+            if "captcha" in response.text.lower():
+                solution = self.captcha_solver.solve(response.content)
+                return self.handle_captcha(url, solution, proxy)
+
+            response.raise_for_status()
+            return self.parse_data(response.text)
+
+        except requests.HTTPError as e:
+            if e.response.status_code in [403, 429, 503]:
+                # Exponential backoff
+                time.sleep(2 ** random.uniform(1, 5))
+                self.proxy_manager.blacklist(proxy)
+            raise
+
+    def parse_data(self, html):
+        soup = BeautifulSoup(html, "lxml")
+        return {
+            "title": soup.select_one("h1.product-title").text.strip(),
+            "price": soup.select_one(".price").attrs.get("data-value")
+        }
+
+    def handle_captcha(self, url, solution, proxy):
+        # Resubmit request with solved CAPTCHA token
+        headers = {"User-Agent": random.choice(self.user_agents)}
+        response = requests.post(
+            url,
+            data={"captcha_token": solution},
+            proxies={"http": proxy, "https": proxy},
+            headers=headers,
+            timeout=10
+        )
+        response.raise_for_status()
+        return self.parse_data(response.text)
+
+# -------------------------
+# Stealth Module
+# -------------------------
+def stealth_delay():
+    time.sleep(random.uniform(1, 5))  # Randomized request intervals
+
+# -------------------------
+# Main Execution
+# -------------------------
+if __name__ == "__main__":
+    PROXY_POOL = [
+        "http://user:pass@192.168.1.1:8080",
+        "socks5://user:pass@10.0.0.1:9050"
+    ]
+    USER_AGENTS = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4)"
+    ]
+
+    proxy_manager = ProxyManager(PROXY_POOL)
+    captcha_solver = CaptchaSolver()
+    scraper = Scraper(proxy_manager, captcha_solver, USER_AGENTS)
+
+    stealth_delay()
+    data = scraper.scrape_with_retry("https://target-ecommerce-site.com/product/123")
+    print(data)
