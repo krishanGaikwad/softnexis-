@@ -1,0 +1,58 @@
+from flask import Flask, render_template_string
+from datetime import datetime
+
+app = Flask(__name__)
+
+# Base template defined as a string
+base_template = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}My Website{% endblock %}</title>
+</head>
+<body>
+    <nav>
+        <a href="/">Home</a> |  
+        <a href="/about">About</a>
+    </nav>
+    <hr>
+    {% block content %}{% endblock %}
+</body>
+</html>
+"""
+
+# Index template extending base
+index_template = """
+{% extends "base.html" %}
+{% block title %}Home Page{% endblock %}
+{% block content %}
+<h1>Welcome, {{ username }}!</h1>
+<p>Today is {{ date }}</p>
+<ul>
+    {% for item in items %}
+        <li>{{ item }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}
+"""
+
+@app.route('/')
+def home():
+    username = "Krishna"
+    date = datetime.now().strftime("%A, %d %B %Y")
+    items = ["Learn Flask", "Practice Jinja2", "Build Portfolio Projects"]
+
+    # Render index template with dynamic data
+    return render_template_string(index_template, username=username, date=date, items=items)
+
+@app.route('/about')
+def about():
+    # Render base template directly
+    return render_template_string(base_template)
+
+# Register base template so index can extend it
+app.jinja_loader.mapping = {"base.html": base_template}
+
+if __name__ == '__main__':
+    app.run(debug=True)
