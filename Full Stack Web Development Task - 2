@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskFlow Lite</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f9f9f9; color: #333; }
+    header { background: #333; color: #fff; padding: 1rem; text-align: center; }
+    main { max-width: 600px; margin: 2rem auto; padding: 1rem; background: #fff; border-radius: 8px; }
+    form { display: flex; margin-bottom: 1rem; }
+    input { flex: 1; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
+    button { padding: 0.5rem 1rem; margin-left: 0.5rem; border: none; border-radius: 4px; background: #333; color: #fff; cursor: pointer; }
+    button:hover { background: #555; }
+    ul { list-style: none; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid #eee; }
+    li.completed span { text-decoration: line-through; color: #888; }
+    .task-actions button { margin-left: 0.5rem; background: #e74c3c; }
+    .task-actions button.edit-btn { background: #3498db; }
+    .empty-state { text-align: center; padding: 1rem; color: #888; }
+    @media (max-width: 768px) {
+      main { margin: 1rem; }
+      form { flex-direction: column; }
+      button { margin: 0.5rem 0 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>TaskFlow Lite</h1>
+    <p>Your client-side task manager</p>
+  </header>
+  <main>
+    <form id="task-form">
+      <input id="task-input" type="text" placeholder="Enter a new task">
+      <button type="submit">Add</button>
+    </form>
+    <ul id="task-list"></ul>
+  </main>
+
+  <script>
+    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+
+    function saveTasks() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function createTask(text) {
+      return { id: Date.now(), text: text.trim(), completed: false };
+    }
+
+    function renderTaskList() {
+      const list = document.getElementById('task-list');
+      list.innerHTML = '';
+      if (tasks.length === 0) {
+        list.innerHTML = '<li class="empty-state">No tasks yet. Add your first task!</li>';
+        return;
+      }
+      tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = `task ${task.completed ? 'completed' : ''}`;
+        li.dataset.id = task.id;
+        li.innerHTML = `
+          <label>
+            <input type="checkbox" ${task.completed ? 'checked' : ''}>
+            <span>${escapeHTML(task.text)}</span>
+          </label>
+          <div class="task-actions">
+            <button class="edit-btn">Edit</button>
+            <button class="delete-btn">Delete</button>
+          </div>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>"']/g, tag => ({
+        '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+      }[tag]));
+    }
+
+    document.getElementById('task-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const input = document.getElementById('task-input');
+      if (!input.value.trim()) return alert('Task cannot be empty');
+      tasks.push(createTask(input.value));
+      saveTasks();
+      renderTaskList();
+      input.value = '';
+    });
+
+    document.getElementById('task-list').addEventListener('click', e => {
+      const taskElement = e.target.closest('.task');
+      if (!taskElement) return;
+      const taskId = Number(taskElement.dataset.id);
+      const taskIndex = tasks.findIndex(t => t.id === taskId);
+
+      if (e.target.classList.contains('delete-btn')) {
+        tasks.splice(taskIndex, 1);
+        saveTasks();
+        renderTaskList();
+      }
+      if (e.target.type === 'checkbox') {
+        tasks[taskIndex].completed = e.target.checked;
+        saveTasks();
+        taskElement.classList.toggle('completed', e.target.checked);
+      }
+      if (e.target.classList.contains('edit-btn')) {
+        const newText = prompt('Edit task:', tasks[taskIndex].text);
+        if (newText && newText.trim()) {
+          tasks[taskIndex].text = newText.trim();
+          saveTasks();
+          renderTaskList();
+        }
+      }
+    });
+
+    renderTaskList();
+  </script>
+</body>
+</html>
