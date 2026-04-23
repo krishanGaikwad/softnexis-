@@ -1,0 +1,47 @@
+import pandas as pd
+import numpy as np
+import scipy.stats as stats
+import matplotlib.pyplot as plt
+from statsmodels.stats.power import TTestIndPower
+
+ab_data = pd.read_csv("ab_test_data.csv")
+
+conv_old = ab_data[ab_data['group'] == 'control']['converted'].sum()
+conv_new = ab_data[ab_data['group'] == 'treatment']['converted'].sum()
+n_old = ab_data[ab_data['group'] == 'control'].shape[0]
+n_new = ab_data[ab_data['group'] == 'treatment'].shape[0]
+
+z_score, p_value = stats.proportions_ztest(
+    [conv_new, conv_old],
+    [n_new, n_old],
+    alternative='larger'
+)
+print(f"Z-score: {z_score:.2f}, p-value: {p_value:.6f}")
+
+ci_old = stats.proportion_confint(conv_old, n_old, alpha=0.05)
+ci_new = stats.proportion_confint(conv_new, n_new, alpha=0.05)
+
+plt.figure(figsize=(10,6))
+plt.errorbar(x=[0,1], y=[conv_old/n_old, conv_new/n_new],
+             yerr=[[conv_old/n_old-ci_old[0], conv_new/n_new-ci_new[0]],
+                   [ci_old[1]-conv_old/n_old, ci_new[1]-conv_new/n_new]],
+             fmt='o', capsize=10)
+plt.xticks([0,1], ['Control','Treatment'])
+plt.ylabel('Conversion Rate')
+plt.title('95% Confidence Intervals')
+plt.grid(alpha=0.2)
+
+contingency_table = pd.crosstab(ab_data['device'], ab_data['converted'])
+chi2, p, dof, _ = stats.chi2_contingency(contingency_table)
+print(f"Chi-square p-value: {p:.5f}")
+
+duration_control = ab_data[ab_data['group'] == 'control']['session_duration']
+duration_treatment = ab_data[ab_data['group'] == 'treatment']['session_duration']
+t_stat, p_val = stats.ttest_ind(duration_treatment, duration_control)
+print(f"T-test p-value: {p_val:.4f}")
+
+analysis = TTestIndPower()
+sample_size = analysis.solve_power(effect_size=0.2, power=0.8, alpha=0.05)
+print(f"Required sample per group: {int(sample_size)}")
+
+plt.show()
