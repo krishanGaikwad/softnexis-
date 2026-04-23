@@ -1,0 +1,30 @@
+import pandas as pd
+import numpy as np
+from sklearn.impute import SimpleImputer
+
+df = pd.read_csv("customers-100.csv")
+
+df = df.drop_duplicates()
+df = df.drop(columns=["temp_id", "notes"], errors="ignore")
+df = df.rename(columns={"cust_id": "customer_id", "reg": "region"})
+
+df = df.dropna(thresh=int(0.3 * df.shape[1]))
+
+num_imputer = SimpleImputer(strategy="median")
+df["revenue"] = num_imputer.fit_transform(df[["revenue"]])
+
+cat_imputer = SimpleImputer(strategy="most_frequent")
+df["region"] = cat_imputer.fit_transform(df[["region"]])
+
+df["signup_date"] = pd.to_datetime(df["signup_date"], errors="coerce")
+df["price"] = pd.to_numeric(df["price"].str.replace("$", ""), errors="coerce")
+
+df["customer_name"] = df["customer_name"].str.lower().str.strip()
+df["gender"] = df["gender"].replace({"M": "Male", "F": "Female", "male": "Male"})
+
+df["weight_kg"] = np.where(df["weight_unit"] == "lbs",
+                           df["weight"] * 0.453592,
+                           df["weight"])
+
+assert df.duplicated().sum() == 0
+df.to_csv("cleaned_customers.csv", index=False)
