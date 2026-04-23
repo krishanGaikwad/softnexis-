@@ -1,0 +1,41 @@
+from flask import Flask
+
+# Create Flask app instance
+app = Flask(__name__)
+
+# Home route
+@app.route('/')
+def home():
+    return "<h1>Welcome to My Flask App!</h1><p>This is the home page.</p>"
+
+# About route
+@app.route('/about')
+def about():
+    return "<h1>About Page</h1><p>This page explains the basics of Flask and Python.</p>"
+
+# Contact route
+@app.route('/contact')
+def contact():
+    return "<h1>Contact Page</h1><p>You can reach me at: krishna@example.com</p>"
+
+# Demonstrating Python basics inside a route
+@app.route('/python-basics')
+def python_basics():
+    # Variables
+    name = "Krishna"
+    age = 21
+
+    # Function
+    def greet(user):
+        return f"Hello, {user}! You are {age} years old."
+
+    # Loop
+    greetings = ""
+    for i in range(3):
+        greetings += greet(name) + "<br>"
+
+    return f"<h1>Python Basics Demo</h1><p>{greetings}</p>"
+
+# Run the server
+if __name__ == '__main__':
+    app.run(debug=True)
